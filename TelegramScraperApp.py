@@ -85,37 +85,59 @@ class TelegramScraperApp(ctk.CTk):
         threading.Thread(target=self.scrape_logic, daemon=True).start()
 
     def scrape_logic(self):
-        self.log("Starting extraction with random delays...")
+        self.log("Starting targeted member extraction...")
 
         try:
-            # Simulate initial 'reading' time before acting
-            time.sleep(random.uniform(2, 4))
+            # 1. Define the specific container you found
+            # This ensures we only look inside the members tab
+            container_selector = ".search-super-container-members"
 
-            # Locate member list elements. In Web K, titles usually have the '.peer-title' class.
-            # Note: Selectors may change if Telegram updates their web version.
-            elements = self.driver.find_elements(By.CSS_SELECTOR, ".peer-title")
+            # 2. Perform a few auto-scrolls to load more users
+            # Telegram Web K only loads users as you scroll down
+            self.log("Scrolling to load more members...")
+            for i in range(5):  # Adjust the range to scroll more or less
+                self.driver.execute_script(
+                    f"document.querySelector('{container_selector}').scrollBy(0, 800);"
+                )
+                time.sleep(random.uniform(1.0, 2.0))
 
-            if not elements:
-                self.log("No users detected. Is the members list actually open?")
+            # 3. Target titles ONLY inside that specific container
+            # We use a space in the selector to find children of that div
+            member_elements = self.driver.find_elements(
+                By.CSS_SELECTOR, f"{container_selector} .peer-title"
+            )
+
+            if not member_elements:
+                self.log("No members found inside the container. Check if the tab is active.")
                 return
 
             extracted_users = []
 
-            for index, el in enumerate(elements):
-                # Every 5 users, take a longer pause to simulate human reading/scrolling
-                if index % 5 == 0 and index > 0:
-                    time.sleep(random.uniform(1.5, 3))
+            self.log(f"Processing {len(member_elements)} elements...")
 
-                name = el.text
-                if name and name not in extracted_users:
-                    extracted_users.append(name)
-                    self.textbox.insert("end", f"Found: {name}\n")
-                    self.textbox.see("end")
+            for index, el in enumerate(member_elements):
+                try:
+                    name = el.text.strip()
 
-            self.log(f"Extraction finished. Total: {len(extracted_users)} visible users.")
+                    if name and name not in extracted_users:
+                        extracted_users.append(name)
+                        # We use 'end' to always add to the bottom of the textbox
+                        self.textbox.insert("end", f"Member: {name}\n")
+                        self.textbox.see("end")
+
+                    # Anti-detection: small pauses every few names
+                    if index % 15 == 0:
+                        self.update_idletasks()  # Keep the UI responsive
+                        time.sleep(random.uniform(0.1, 0.4))
+
+                except Exception:
+                    # Skips 'stale' elements if the DOM updates during the loop
+                    continue
+
+            self.log(f"Success! Total unique members found: {len(extracted_users)}")
 
         except Exception as e:
-            self.log(f"Error during scraping: {str(e)}")
+            self.log(f"Scraping error: {str(e)}")
 
 
 if __name__ == "__main__":
