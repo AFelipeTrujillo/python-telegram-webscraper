@@ -15,15 +15,15 @@ class TelegramScraperApp(ctk.CTk):
         self.title("Telegram Web K Scraper (Firefox Edition)")
         self.geometry("600x500")
 
-        # Elementos de la Interfaz
-        self.label = ctk.CTkLabel(self, text="Extractor de Usuarios - Telegram Web K", font=("Arial", 18, "bold"))
+        # UI Elements
+        self.label = ctk.CTkLabel(self, text="User Extractor - Telegram Web K", font=("Arial", 18, "bold"))
         self.label.pack(pady=20)
 
-        self.btn_open = ctk.CTkButton(self, text="1. Abrir Firefox (Seguro)", command=self.start_browser_thread,
+        self.btn_open = ctk.CTkButton(self, text="1. Open Firefox (Secure)", command=self.start_browser_thread,
                                       fg_color="#FF5722", hover_color="#E64A19")
         self.btn_open.pack(pady=10)
 
-        self.btn_scrape = ctk.CTkButton(self, text="2. Iniciar Extracción Humana", command=self.start_scrape_thread,
+        self.btn_scrape = ctk.CTkButton(self, text="2. Start Human-Like Extraction", command=self.start_scrape_thread,
                                         state="disabled")
         self.btn_scrape.pack(pady=10)
 
@@ -33,75 +33,79 @@ class TelegramScraperApp(ctk.CTk):
         self.driver = None
 
     def log(self, message):
+        """Helper to log messages into the UI textbox."""
         self.textbox.insert("end", f"> {message}\n")
         self.textbox.see("end")
 
     def start_browser_thread(self):
+        """Launches the browser initialization in a separate thread to keep UI responsive."""
         threading.Thread(target=self.open_browser, daemon=True).start()
 
     def open_browser(self):
-        self.log("Configurando Firefox con medidas anti-detección...")
+        self.log("Configuring Firefox with anti-detection measures...")
 
         options = FirefoxOptions()
 
-        # Ajustes para parecer un usuario real y ocultar Selenium
-        # 1. Cambiar el User-Agent (Mac estándar)
+        # Anti-detection and stealth settings
+        # 1. Override User-Agent to match a standard Mac user
         options.set_preference("general.useragent.override",
                                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0")
 
-        # 2. Desactivar la bandera de automatización (webdriver = false)
+        # 2. Disable the 'webdriver' flag (prevents sites from seeing 'navigator.webdriver = true')
         options.set_preference("dom.webdriver.enabled", False)
         options.set_preference("useAutomationExtension", False)
 
-        # 3. Desactivar el chequeo de compatibilidad de Marionette
+        # 3. Enable Marionette for Selenium communication
         options.set_preference("marionette.enabled", True)
 
         try:
+            # Automatic driver installation and browser launch
             service = FirefoxService(GeckoDriverManager().install())
             self.driver = webdriver.Firefox(service=service, options=options)
 
             self.driver.get("https://web.telegram.org/k/")
             self.btn_scrape.configure(state="normal")
-            self.log("Firefox abierto. Por favor, logueate y entra a un grupo.")
-            self.log("Recuerda abrir la lista de miembros antes de extraer.")
+            self.log("Firefox opened. Please log in and navigate to a group.")
+            self.log("Note: Open the members list sidebar before extracting.")
         except Exception as e:
-            self.log(f"Error al abrir Firefox: {str(e)}")
+            self.log(f"Error opening Firefox: {str(e)}")
 
     def start_scrape_thread(self):
+        """Launches the scraping logic in a separate thread."""
         threading.Thread(target=self.scrape_logic, daemon=True).start()
 
     def scrape_logic(self):
-        self.log("Iniciando extracción con pausas aleatorias...")
+        self.log("Starting extraction with random delays...")
 
         try:
-            # Simulamos que el script "mira" la pantalla antes de actuar
+            # Simulate initial 'reading' time before acting
             time.sleep(random.uniform(2, 4))
 
-            # Buscamos los elementos de la lista de miembros
-            # En Web K, los nombres suelen estar en elementos con la clase '.peer-title'
+            # Locate member list elements. In Web K, titles usually have the '.peer-title' class.
+            # Note: Selectors may change if Telegram updates their web version.
             elements = self.driver.find_elements(By.CSS_SELECTOR, ".peer-title")
 
             if not elements:
-                self.log("No se detectaron usuarios. ¿Tienes abierta la lista de miembros?")
+                self.log("No users detected. Is the members list actually open?")
                 return
 
-            usuarios_extraidos = []
+            extracted_users = []
 
             for index, el in enumerate(elements):
-                # Cada 5 usuarios, hacemos una pausa más larga para simular lectura humana
+                # Every 5 users, take a longer pause to simulate human reading/scrolling
                 if index % 5 == 0 and index > 0:
                     time.sleep(random.uniform(1.5, 3))
 
-                nombre = el.text
-                if nombre and nombre not in usuarios_extraidos:
-                    usuarios_extraidos.append(nombre)
-                    self.textbox.insert("end", f"Encontrado: {nombre}\n")
+                name = el.text
+                if name and name not in extracted_users:
+                    extracted_users.append(name)
+                    self.textbox.insert("end", f"Found: {name}\n")
                     self.textbox.see("end")
 
-            self.log(f"Fin del proceso. Total: {len(usuarios_extraidos)} usuarios visibles.")
+            self.log(f"Extraction finished. Total: {len(extracted_users)} visible users.")
 
         except Exception as e:
-            self.log(f"Error durante el scraping: {str(e)}")
+            self.log(f"Error during scraping: {str(e)}")
 
 
 if __name__ == "__main__":
