@@ -2,6 +2,7 @@ import customtkinter as ctk
 import threading
 import random
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -45,6 +46,15 @@ class TelegramScraperApp(ctk.CTk):
         self.log("Configuring Firefox with anti-detection measures...")
 
         options = FirefoxOptions()
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        profile_path = os.path.join(script_dir, "telegram_profile")
+
+        if not os.path.exists(profile_path):
+            os.makedirs(profile_path)
+
+        options.add_argument("-profile")
+        options.add_argument(profile_path)
 
         # Anti-detection and stealth settings
         # 1. Override User-Agent to match a standard Mac user
